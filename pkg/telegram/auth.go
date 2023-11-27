@@ -3,11 +3,13 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
+	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
+	"go.uber.org/zap"
 )
-
 
 // FIX: needs to be changed due to client or ask in manager what about it
 const (
@@ -17,12 +19,61 @@ const (
 
 type SignUpRequest struct{
   PhoneNumber string
+
   Code string 
+  CodeHash  string
+
+  FirstName string
+  LastName string
 }
 
+type TelegramAPI struct {
+  Client *tg.Client
+  Ctx context.Context
+}
 
-func NewTelegramClient() *telegram.Client {
- return telegram.NewClient(API_ID, API_HASH, telegram.Options{})
+type TelegramClientOptions struct {
+  Address string
+  Port  int
+  TdFilesDir  string
+  TdDbDir string
+  PhoneNumber string
+}
+
+type TelegramStorage struct{
+  DBDir string
+  FileDir string
+}
+
+func sessionFolder(phone string) string {
+	var out []rune
+	for _, r := range phone {
+		if r >= '0' && r <= '9' {
+			out = append(out, r)
+		}
+	}
+	return "phone-" + string(out)
+}
+
+func NewTelegramClient(options *TelegramClientOptions) *telegram.Client {
+ sessionPath := filepath.Join("sessions", sessionFolder(options.PhoneNumber))
+
+ return telegram.NewClient(
+    API_ID,
+    API_HASH,
+    telegram.Options{
+      /*
+      Device: telegram.DeviceConfig{
+        Proxy: tg.InputClientProxy{
+          Address: options.Address,
+          Port: options.Port,
+        },
+      },
+      */
+      SessionStorage: &session.FileStorage{Path: filepath.Join(sessionPath, "session.json")},
+      Logger: zap.L(),
+    },
+  )
 }
 
 func NewSession( client *telegram.Client, f func(clientContext context.Context) error) error {
@@ -32,20 +83,37 @@ func NewSession( client *telegram.Client, f func(clientContext context.Context) 
   return nil
 }
 
-// TODO: mb refactor to one structure with client and context
-func GetAuthCode(client *tg.Client, ctx context.Context, phoneNumber string) error {
+func GetAuthCode(api *TelegramAPI, phoneNumber string) (*tg.AuthSentCode, error) {
     requestData := &tg.AuthSendCodeRequest{PhoneNumber: phoneNumber, APIID: API_ID, APIHash: API_HASH}
-    if _, err := client.AuthSendCode(ctx, requestData); err != nil {
-      return err
+    resp, err := api.Client.AuthSendCode(api.Ctx, requestData)
+
+    if resp, ok := resp.(*tg.AuthSentCode); ok {
+      fmt.Println("code was sent", ok)
+      return resp, nil
     }
-		return nil
+    if err != nil {
+      return nil, err
+    }
+
+		return nil, err
 }
 
-func SignUp(client *tg.Client, ctx context.Context, body *SignUpRequest) error {
-  resp, err := client.AuthSignUp(ctx, &tg.AuthSignUpRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.Code })
+func SignUp(api *TelegramAPI, body *SignUpRequest) error {
+
+  resp, err := api.Client.AuthSignIn(api.Ctx, &tg.AuthSignInRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash })
   if err != nil {
     return err
   }
   fmt.Println("Response: ", resp)
   return nil
+
+  /*
+  resp, err := api.Client.AuthSignUp(api.Ctx, &tg.AuthSignUpRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash, FirstName: body.FirstName, LastName: body.LastName})
+  if err != nil {
+    return err
+  }
+  fmt.Println("Response: ", resp)
+  return nil
+  */
 }
+
