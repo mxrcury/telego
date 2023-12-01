@@ -2,33 +2,39 @@ package telegram
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"path/filepath"
 
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
+	"github.com/gotd/td/telegram/auth"
 	"github.com/gotd/td/tg"
 	"go.uber.org/zap"
 )
 
-// FIX: needs to be changed due to client or ask in manager what about it
-const (
-  API_ID = 29763419
-  API_HASH = "b8b953e3ffde464a8c3b46712db4db0e"
-)
+// TODO(proxy) part of configs client:
+/*
+   Device: telegram.DeviceConfig{
+     Proxy: tg.InputClientProxy{
+       Address: options.Address,
+       Port: options.Port,
+     },
+   },
+*/
+// TODO: make TelegramAPI as creating session and method from it as struct methods
+// but not pass api every time
 
-type SignUpRequest struct{
+// FIX: needs to be changed
+
+type SignInRequest struct{
   PhoneNumber string
 
   Code string 
   CodeHash  string
-
-  FirstName string
-  LastName string
 }
 
 type TelegramAPI struct {
-  Client *tg.Client
+  Client *telegram.Client
   Ctx context.Context
 }
 
@@ -62,15 +68,7 @@ func NewTelegramClient(options *TelegramClientOptions) *telegram.Client {
     API_ID,
     API_HASH,
     telegram.Options{
-      /*
-      Device: telegram.DeviceConfig{
-        Proxy: tg.InputClientProxy{
-          Address: options.Address,
-          Port: options.Port,
-        },
-      },
-      */
-      SessionStorage: &session.FileStorage{Path: filepath.Join(sessionPath, "session.json")},
+     SessionStorage: &session.FileStorage{Path: filepath.Join(sessionPath, "session.json")},
       Logger: zap.L(),
     },
   )
@@ -83,37 +81,34 @@ func NewSession( client *telegram.Client, f func(clientContext context.Context) 
   return nil
 }
 
-func GetAuthCode(api *TelegramAPI, phoneNumber string) (*tg.AuthSentCode, error) {
-    requestData := &tg.AuthSendCodeRequest{PhoneNumber: phoneNumber, APIID: API_ID, APIHash: API_HASH}
-    resp, err := api.Client.AuthSendCode(api.Ctx, requestData)
+func NewTelegramAPI(client *telegram.Client, ctx context.Context) *TelegramAPI{
+  return &TelegramAPI{
+    Client: client,
+    Ctx: ctx,
+  }
+}
+
+func (a *TelegramAPI) GetAuthCode(phoneNumber string) (*tg.AuthSentCode, error) {
+    //requestData := &tg.AuthSendCodeRequest{PhoneNumber: phoneNumber, APIID: API_ID, APIHash: API_HASH}
+    
+    resp, err := a.Client.Auth().SendCode(a.Ctx, phoneNumber, auth.SendCodeOptions{})
 
     if resp, ok := resp.(*tg.AuthSentCode); ok {
-      fmt.Println("code was sent", ok)
       return resp, nil
     }
-    if err != nil {
-      return nil, err
-    }
-
 		return nil, err
 }
 
-func SignUp(api *TelegramAPI, body *SignUpRequest) error {
-
-  resp, err := api.Client.AuthSignIn(api.Ctx, &tg.AuthSignInRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash })
+func (a *TelegramAPI) SignIn(body *SignInRequest) (interface{}, error) {
+  //requestData := &tg.AuthSignInRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash, PhoneCode: body.Code}
+  resp, err := a.Client.Auth().SignIn(a.Ctx,body.PhoneNumber, body.Code, body.CodeHash)
   if err != nil {
-    return err
+    return nil, err
   }
-  fmt.Println("Response: ", resp)
-  return nil
-
-  /*
-  resp, err := api.Client.AuthSignUp(api.Ctx, &tg.AuthSignUpRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash, FirstName: body.FirstName, LastName: body.LastName})
-  if err != nil {
-    return err
-  }
-  fmt.Println("Response: ", resp)
-  return nil
-  */
+  return resp, nil
 }
 
+func Is2FAError(err error) bool {
+  TwoFAError := errors.New("2FA required")
+  return errors.As(err, &TwoFAError)
+}

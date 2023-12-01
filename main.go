@@ -1,75 +1,97 @@
 package main
 
 import (
+	"authtg/pkg/cmd"
 	"authtg/pkg/telegram"
-	"authtg/pkg/utils"
 	"fmt"
-	"log"
+	"reflect"
 	"strings"
+	"time"
 
 	"bufio"
 	"context"
 	"os"
 )
-
 const (
   NAMES_FILE = "names.txt"
 )
 
+// TODO(proxy): add proxy support
+const (
+  ADDRESS = "127.0.0.1"
+  PORT = 4332
+)
+
+
 func main() {
-  names, err := utils.ReadDocumentByLine(NAMES_FILE)
-  if err != nil {
-    log.Fatalln(err)
-  }
+  fmt.Println("WELCOME TO _TELEGAUTH_") // TODO(text): change text and make it ASCII ART LOOKS LIKE
 
    for {
     reader := bufio.NewReader(os.Stdin)
 
-    fmt.Printf("[PHONE NUMBER]:")
+    fmt.Printf("Please enter your phone number:")
     phoneNumber, err := reader.ReadString('\n')
     if err != nil {
-      log.Printf("error:%v\n", err)
+      fmt.Printf("error:%v\n", err)
       continue
     }
 
-    /*
-    validPhoneNumberRegex := "+7"
+    validPhoneNumberRegex := "+"
     if isValidPhoneNumber := strings.HasPrefix(phoneNumber, validPhoneNumberRegex); !isValidPhoneNumber {
-      log.Println("phone number format should starts with +7")
+      fmt.Println("phone number format should starts with +")
       continue
-    }*/
+    }
     phoneNumber = strings.ReplaceAll(phoneNumber, "\n", "")
 
-    options := telegram.TelegramClientOptions{Address: "127.0.0.1", Port: 3000, PhoneNumber: phoneNumber}
+    options := telegram.TelegramClientOptions{
+        PhoneNumber: phoneNumber,
+    }
     tgClient := telegram.NewTelegramClient(&options)
     if err := telegram.NewSession(tgClient, func(clientContext context.Context) error {
-      firstName, lastName := utils.GetRandomName(names)
-      api := tgClient.API()
+      tgAPI := telegram.NewTelegramAPI(tgClient, clientContext)
 
-      resp, err := telegram.GetAuthCode(&telegram.TelegramAPI{api, clientContext}, phoneNumber); 
+      resp, err := tgAPI.GetAuthCode(phoneNumber); 
       if err != nil {
         return err
       }
-    
-      fmt.Printf("[CODE]:")
+
+      fmt.Printf("Please enter a received code:")
 
       authCode, err := reader.ReadString('\n')
       if err != nil {
-        log.Printf("error:%s\n", err)
         return err
       }
       authCode = strings.ReplaceAll(authCode, "\n", "")
-      codeHash := resp.PhoneCodeHash
-      fmt.Println(codeHash, authCode, len(authCode))
-      
-      requestData := &telegram.SignUpRequest{PhoneNumber: phoneNumber, Code: authCode, FirstName: firstName, LastName: lastName, CodeHash: codeHash}
-      if err := telegram.SignUp(&telegram.TelegramAPI{api, clientContext}, requestData); err != nil {
+
+      _, err = tgClient.Auth().SignIn(clientContext, phoneNumber, authCode, resp.PhoneCodeHash)
+      if telegram.Is2FAError(err) {
+        fmt.Printf("Please enter a password for 2FA:")
+        pass, err := reader.ReadString('\n')
+        pass = strings.ReplaceAll(pass, "\n", "")
+        if err != nil {
+          return err
+        }
+        if _, err = tgClient.Auth().Password(clientContext, pass); err != nil {
+          return err
+        }
+      } else if err != nil {
         return err
+      } else {
+        resp, err := tgAPI.SignIn(&telegram.SignInRequest{PhoneNumber: phoneNumber, Code: authCode, CodeHash: resp.PhoneCodeHash})
+        if err != nil {
+          return err
+        }
+        fmt.Println("CLEAR AUTH RESP:", resp, reflect.TypeOf(resp)) // TODO: update it
       }
-      fmt.Println("[SUCCESS!] account created.")
+      fmt.Println("[SUCCESS!]")
+      time.Sleep(time.Second * 1)
+
+      cmd.Init(tgClient, clientContext)
+      
       return nil
     }); err != nil {
-      log.Printf("error: %s [%s]", err, phoneNumber)
+      fmt.Printf("error: %s\n", err)
+      continue
     }
   }
 }
