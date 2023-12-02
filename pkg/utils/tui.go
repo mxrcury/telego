@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
@@ -18,4 +19,9 @@ func ClearTerminal(){
   }
   cmd.Stdout = os.Stdout
   cmd.Run()
+}
+
+func PrintInput(){
+  fmt.Printf("──────────────────\n")
+  fmt.Printf("$ ")
 }

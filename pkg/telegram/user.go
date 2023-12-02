@@ -1,15 +1,12 @@
 package telegram
 
 import (
-	"context"
-
-	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
 )
 
 
-func GetMe(client *telegram.Client, ctx context.Context) (*tg.User, error){
-  status, err := client.Auth().Status(ctx)
+func GetMe(api *TelegramAPI) (*tg.User, error){
+  status, err := api.Client.Auth().Status(api.Ctx)
   if err != nil {
     return nil, err
   }

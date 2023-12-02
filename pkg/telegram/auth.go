@@ -24,6 +24,8 @@ import (
 // TODO: make TelegramAPI as creating session and method from it as struct methods
 // but not pass api every time
 
+
+
 // FIX: needs to be changed
 
 type SignInRequest struct{

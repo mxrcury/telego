@@ -86,7 +86,7 @@ func main() {
       fmt.Println("[SUCCESS!]")
       time.Sleep(time.Second * 1)
 
-      cmd.Init(tgClient, clientContext)
+      cmd.Init(tgAPI)
       
       return nil
     }); err != nil {
