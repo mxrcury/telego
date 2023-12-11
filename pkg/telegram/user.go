@@ -5,8 +5,8 @@ import (
 )
 
 
-func GetMe(api *TelegramAPI) (*tg.User, error){
-  status, err := api.Client.Auth().Status(api.Ctx)
+func (a *TelegramAPI) GetMe() (*tg.User, error){
+  status, err := a.Client.Auth().Status(a.Ctx)
   if err != nil {
     return nil, err
   }

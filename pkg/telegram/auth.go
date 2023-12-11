@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 
 	"github.com/gotd/td/session"
@@ -24,7 +25,10 @@ import (
 // TODO: make TelegramAPI as creating session and method from it as struct methods
 // but not pass api every time
 
-
+var (
+  API_ID = os.Getenv("API_ID")
+  API_HASH = os.Getenv("API_HASH")
+)
 
 // FIX: needs to be changed
 
@@ -102,7 +106,6 @@ func (a *TelegramAPI) GetAuthCode(phoneNumber string) (*tg.AuthSentCode, error) 
 }
 
 func (a *TelegramAPI) SignIn(body *SignInRequest) (interface{}, error) {
-  //requestData := &tg.AuthSignInRequest{PhoneNumber: body.PhoneNumber, PhoneCodeHash: body.CodeHash, PhoneCode: body.Code}
   resp, err := a.Client.Auth().SignIn(a.Ctx,body.PhoneNumber, body.Code, body.CodeHash)
   if err != nil {
     return nil, err
@@ -110,7 +113,24 @@ func (a *TelegramAPI) SignIn(body *SignInRequest) (interface{}, error) {
   return resp, nil
 }
 
+func (a *TelegramAPI) SignInWith2FA(phone, code, codeHash string,) (error){
+  _, err := a.Client.Auth().SignIn(a.Ctx, phone, code, codeHash)
+  if err != nil {
+    return err
+  }
+  return nil
+}
+
+func (a *TelegramAPI) SignInWith2FAPassword(password string) (error) {
+  _, err := a.Client.Auth().Password(a.Ctx, password); 
+ if err != nil  {
+    return err
+ }
+ return nil
+}
+
 func Is2FAError(err error) bool {
   TwoFAError := errors.New("2FA required")
   return errors.As(err, &TwoFAError)
 }
+

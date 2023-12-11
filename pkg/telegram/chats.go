@@ -12,16 +12,25 @@ type Chat struct{
   MembersLength int
 }
 
-func GetChats(api *TelegramAPI) (*tg.MessagesDialogsSlice, error) {
-  resp, err := api.Client.API().MessagesGetDialogs(api.Ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerChannel{}})
+func (a *TelegramAPI) GetChats() (*tg.MessagesDialogsSlice, error) {
+  resp, err := a.Client.API().MessagesGetDialogs(a.Ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerChannel{} })
   if resp, ok := resp.(*tg.MessagesDialogsSlice); ok {
     return resp, err
   }
   return nil, err
 }
-func GetChatInfo(api *TelegramAPI, id int) (*Chat, error) {
-  resp, err := api.Client.API().MessagesGetFullChat(api.Ctx, int64(id))
-  fmt.Println("RESPP:", resp)
+
+func (a *TelegramAPI) GetChatsWithPagination(lastChatID int) (*tg.MessagesDialogsSlice, error) {
+  resp, err := a.Client.API().MessagesGetDialogs(a.Ctx, &tg.MessagesGetDialogsRequest{Limit: 10, OffsetPeer: &tg.InputPeerChannel{}, OffsetID: lastChatID })
+  if resp, ok := resp.(*tg.MessagesDialogsSlice); ok {
+    return resp, err
+  }
+  return nil, err
+}
+
+func (a *TelegramAPI) GetChatInfo(id int) (*Chat, error) {
+  fmt.Println("ID:", id)
+  resp, err := a.Client.API().MessagesGetFullChat(a.Ctx, int64(id))
   if err != nil {
     return nil, err
   }

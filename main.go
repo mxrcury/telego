@@ -63,15 +63,16 @@ func main() {
       }
       authCode = strings.ReplaceAll(authCode, "\n", "")
 
-      _, err = tgClient.Auth().SignIn(clientContext, phoneNumber, authCode, resp.PhoneCodeHash)
+      err = tgAPI.SignInWith2FA(phoneNumber, authCode, resp.PhoneCodeHash)
       if telegram.Is2FAError(err) {
         fmt.Printf("Please enter a password for 2FA:")
         pass, err := reader.ReadString('\n')
-        pass = strings.ReplaceAll(pass, "\n", "")
         if err != nil {
           return err
         }
-        if _, err = tgClient.Auth().Password(clientContext, pass); err != nil {
+        pass = strings.ReplaceAll(pass, "\n", "")
+
+        if err = tgAPI.SignInWith2FAPassword(pass); err != nil {
           return err
         }
       } else if err != nil {
