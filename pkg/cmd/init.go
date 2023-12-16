@@ -22,30 +22,9 @@ func Init(api *telegram.TelegramAPI) error {
     }
        
     if utils.IsHelpCommand(receivedCommand) {
-      utils.ClearTerminal()
-    fmt.Println(
-`List of commands:
-:chats <Nth> - to get list of your chats by page(every 10 dialogs)
-:me - get info about yourself
-:chat <Nth> - to get more info of the specific chat in received list
---------
-:logout - to logout and end telegram session
-:exit - to exit from there
-`)
-      utils.PrintInput()
+     HandleHelpCommand()
     } else if utils.IsGetMeCommand(receivedCommand) {
-      utils.ClearTerminal()
-      user, err := api.GetMe()
-      if err != nil{
-        fmt.Println("error:", err)
-        continue
-      }
-      fmt.Printf(
-`Username:  %s
-Name:      %s %s
-ID:        %d
-`, user.Username, user.FirstName, user.LastName, user.ID)
-      utils.PrintInput()
+     HandleMeCommand(api) // TODO: change error handling
     } else if utils.IsChatsCommand(receivedCommand){
       err := HandleGetChats(api, chatIDs)
       if err != nil {

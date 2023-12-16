@@ -3,6 +3,7 @@ package main
 import (
 	"authtg/pkg/cmd"
 	"authtg/pkg/telegram"
+	"authtg/pkg/utils"
 	"fmt"
 	"reflect"
 	"strings"
@@ -12,19 +13,25 @@ import (
 	"context"
 	"os"
 )
-const (
-  NAMES_FILE = "names.txt"
-)
 
-// TODO(proxy): add proxy support
 const (
-  ADDRESS = "127.0.0.1"
-  PORT = 4332
+  WELCOME_TEXT= `
+ _ _ _     _                      _          _____ _____ __    _____ _____ _____ 
+| | | |___| |___ ___ _____ ___   | |_ ___   |_   _|   __|  |  |   __|   __|     |
+| | | | -_| |  _| . |     | -_|  |  _| . |    | | |   __|  |__|   __|  |  |  |  |
+|_____|___|_|___|___|_|_|_|___|  |_| |___|    |_| |_____|_____|_____|_____|_____|
+                                                                                 
+  `
+  GREEN = "\033[32m"
+  BLUE = "\033[36m"
+  RESET = "\033[0m"
 )
-
 
 func main() {
-  fmt.Println("WELCOME TO _TELEGAUTH_") // TODO(text): change text and make it ASCII ART LOOKS LIKE
+  SetupConfig()
+  utils.ClearTerminal()
+  fmt.Println(BLUE + WELCOME_TEXT) // TODO(text): change text and make it ASCII ART LOOKS LIKE
+  fmt.Println(RESET)
 
    for {
     reader := bufio.NewReader(os.Stdin)
@@ -84,7 +91,8 @@ func main() {
         }
         fmt.Println("CLEAR AUTH RESP:", resp, reflect.TypeOf(resp)) // TODO: update it
       }
-      fmt.Println("[SUCCESS!]")
+      fmt.Println(GREEN + "[SUCCESS!]")
+      fmt.Println(RESET)
       time.Sleep(time.Second * 1)
 
       cmd.Init(tgAPI)

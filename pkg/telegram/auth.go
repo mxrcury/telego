@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/gotd/td/session"
 	"github.com/gotd/td/telegram"
@@ -24,11 +25,6 @@ import (
 */
 // TODO: make TelegramAPI as creating session and method from it as struct methods
 // but not pass api every time
-
-var (
-  API_ID = os.Getenv("API_ID")
-  API_HASH = os.Getenv("API_HASH")
-)
 
 // FIX: needs to be changed
 
@@ -69,9 +65,14 @@ func sessionFolder(phone string) string {
 
 func NewTelegramClient(options *TelegramClientOptions) *telegram.Client {
  sessionPath := filepath.Join("sessions", sessionFolder(options.PhoneNumber))
+ API_HASH := os.Getenv("API_HASH")
+ API_ID, err := strconv.ParseInt(os.Getenv("API_ID"), 10, 64)
+ if err != nil {
+   panic(err)
+ }
 
  return telegram.NewClient(
-    API_ID,
+    int(API_ID),
     API_HASH,
     telegram.Options{
      SessionStorage: &session.FileStorage{Path: filepath.Join(sessionPath, "session.json")},
